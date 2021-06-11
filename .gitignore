@@ -1,0 +1,3 @@
+cmd/client-service/Dero_Message_*
+cmd/client-service/*.exe
+build

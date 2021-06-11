@@ -1,0 +1,339 @@
+<!-- Dice Stats -->
+<div style="height:10px"></div>
+<h3 class="push-up-20" data-tkey="faq1_title">How to use the messaging service?</h3>
+<div class="card padding-15 push-down-10" data-tkey="faq1_text">
+	<p>Check your inbox! Send a message! This is a local webpage, any content leaving your machine to the blockchain is <a href="https://pkg.go.dev/golang.org/x/crypto/chacha20poly1305">chacha20poly1305</a> encrypted to a smart contract, and the decryption keys sent directly to your intended recipient via DERO's TX privacy.</p>
+	<p>See more details about the services here: <a href="https://github.com/Nelbert442/dero-smartcontracts">DERO Messaging</a></p>
+</div>
+<div style="height:10px"></div>
+<h3 class="push-up-15"><span data-tkey="walletDetails">Wallet Details<span></h3>
+	<div class="card padding-l-10 padding-r-10">
+		<div class="stats">
+			<div><i class="fa fa-money"></i> <span data-tkey="walletBalance">Wallet Balance: </span><span id="walletBalance" style="word-wrap: break-word;"></span></div>
+		</div>
+	</div>
+<div style="height:10px"></div>
+<h3 class="push-up-15"><span data-tkey="sendMessageEntry" id="sendMessageEntry">Send Message<span></h3>
+	<div class="card padding-15 push-down-10">
+		<div>
+			To: <input type=”text” size=”19″ style="width: 39%" name="contactname" id="contactname" ><br><br>
+			Tags (not used yet): <input type="text" size="19" style="width: 35%" name="messagetags" id="messagetags" disabled></input><br><br>
+			Message:<br> <textarea name="messagetext" rows="10%" cols="75%" style="height: 250px;" id="messagetext" onkeyup="checkLength(this);"></textarea>
+			<br> <span data-tkey="charLeft">Characters Remaining: </span><span id="charLeft">512</span><div>     </div><div id="errormessage"><span data-tkey="errormessage"></span></div>
+			<br>
+			<div class="col-sm-2">
+				<span class="send-message-btn"><button class="btn btn-default" type="button" id="sendMessage">
+					<span><i class="fa fa-key"></i> <span data-tkey="sendMessage" style="word-wrap: break-word; white-space: normal;">Send</span></span>
+				</button></span>
+			</div>
+			<div class="col-sm-2">
+			<span class="cancel-message-btn"><button class="btn btn-default" type="button" id="cancelMessage">
+				<span><i class="fa fa-key"></i> <span data-tkey="cancelMessage" style="word-wrap: break-word; white-space: normal;">Cancel</span></span>
+			</button></span>
+			</div>
+		</div>
+	</div>
+<div style="height:10px"></div>
+<h3 class="push-up-15"><span data-tkey="inboxTable">Inbox<span></h3>
+	<div class="card padding-15 push-down-10">
+		<div class="tablescroller">
+			<table class="table table-hover">
+				<thead>
+				<tr>
+					<th><i class="fa fa-clock-o"></i> TimeStamp</th>
+					<th><i class="fa fa-group"></i> Sender</th>
+					<th><i class="fa fa-key"></i> RawMessage</th>
+					<th><i class="fa fa-key"></i> Actions</th>
+				</tr>
+				</thead>
+				<tbody id="inbox_table">
+				</tbody>
+			</table>
+		</div>
+	</div>
+<div style="height:10px"></div>
+<h3 class="push-up-15"><span data-tkey="sentTable">Sent Messages<span></h3>
+	<div class="card padding-15 push-down-10">
+		<div class="tablescroller">
+			<table class="table table-hover">
+				<thead>
+				<tr>
+					<th><i class="fa fa-clock-o"></i> TimeStamp</th>
+					<th><i class="fa fa-group"></i> Recipient</th>
+					<th><i class="fa fa-group"></i> ScValue</th>
+				</tr>
+				</thead>
+				<tbody id="sentmessages_table">
+				</tbody>
+			</table>
+		</div>
+	</div>
+<div style="height:10px"></div>
+
+<script>
+    currentPage = {
+        destroy: function(){
+        },
+        update: function(){
+			if (lastStats.inboxMessages != null) {
+					renderInbox(lastStats.inboxMessages);
+			}
+
+			if (lastStats.sentMessages != null) {
+				renderSentMessages(lastStats.sentMessages);
+			}
+
+			if (lastStats.walletBalance != null) {
+			updateText('walletBalance', lastStats.walletBalance.toString());
+			} else { updateText('walletBalance', "N/A"); }
+
+			setInterval(function(){ 
+				if (lastStats.inboxMessages != null) {
+					renderInbox(lastStats.inboxMessages);
+				}
+
+				if (lastStats.sentMessages != null) {
+					renderSentMessages(lastStats.sentMessages);
+				}
+
+				if (lastStats.walletBalance != null) {
+				updateText('walletBalance', lastStats.walletBalance.toString());
+				} else { updateText('walletBalance', "N/A"); }
+			}, 7500);
+        }
+	};
+
+	$('#sendMessage').click(function(){
+		var username = document.getElementById("contactname")
+		var messagetext = document.getElementById("messagetext")
+		var messagetags = document.getElementById("messagetags")
+
+		sendMessage(username, messagetext, messagetags)
+	});
+
+	$('#cancelMessage').click(function(){
+		var username = document.getElementById("contactname")
+		var messagetext = document.getElementById("messagetext")
+		var messagetags = document.getElementById("messagetags")
+
+		username.value = ""
+		messagetags.value = ""
+		updateText('sendMessageEntry', "Send Message")
+	})
+
+	function sendMessage(username, messagetext, messagetags) {
+
+		var xmlhttp = new XMLHttpRequest();
+		xmlhttp.open("POST", api + "/sendmessage", true);
+
+		xmlhttp.onreadystatechange = function()
+		{
+			if (this.readyState == 4 && this.status == 200)
+			{
+				var responseJsonObj = JSON.parse(this.responseText)
+
+				var errorIncl = String(responseJsonObj).includes("ERR:")
+				if (errorIncl == true) {
+					messagetext.style.backgroundColor = "#ff0000"; // red
+					// do something with responseJsonObj
+					updateText('errormessage', "Response: " + responseJsonObj);
+				} else {
+					//messagetext.style.backgroundColor = "#ccffcc"; // green
+					$('#messagetext').val('');
+					updateText('errormessage', "Response: " + responseJsonObj);
+					$('#contactname').val('');
+
+					// On success - reset header to send message
+					updateText('sendMessageEntry', "Send Message")
+
+					// On success - reset char limit to 512 or w/e char limit is
+					updateText('charLeft', 512)
+
+					// On success - contactname set to enabled [on reply function, it is disabled]
+					var contactname = document.getElementById("contactname")
+					contactname.disabled = false
+				}
+			}
+		}
+
+		if (messagetext.value.length <= 512) {
+			var jsonData = {"contactname" : String(username.value), "messagetext" : String(messagetext.value), "messagetags" : String(messagetags.value)}
+			xmlhttp.send( JSON.stringify( jsonData ) );
+		}
+	}
+
+	function replyMessage(scvarname, sender) {
+		var replyDetails = "<xtag>reply:" + scvarname + "</xtag>"
+		$('#messagetags').val(replyDetails);
+		$('#contactname').val(sender)
+		var contactname = document.getElementById("contactname")
+		contactname.disabled = true
+
+		updateText('sendMessageEntry', "Reply Message")
+	}
+
+	function forwardMessage(scvarname, sender) {
+		var fwdDetails = "<xtag>forward:" + scvarname + "</xtag>"
+		$('#contactname').val('')
+		$('#messagetags').val(fwdDetails);
+
+		var contactname = document.getElementById("contactname")
+		contactname.disabled = false
+
+		updateText('sendMessageEntry', "Forward Message")
+	}
+
+	function checkLength(textField) {
+		var t = textField.value;
+
+		if(t.length > 512) {
+			textField.style.backgroundColor = "#ff0000";
+			updateText('errormessage', "ERR: Too many characters.");
+		} else {
+			textField.style.backgroundColor = "#ffffff";
+			updateText('errormessage', "");
+		}
+
+		updateText('charLeft', 512 - t.length)
+	}
+
+	function getTransactionUrl(id) {
+		var txurl = String("https://testnetexplorer.dero.io/tx/{id}")
+		return txurl.replace('{id}', id);
+	}
+
+	function formatTXLink(hash){
+		return '<a target="explorer" href="' + getTransactionUrl(hash) + '">' + hash + '</a>';
+	}
+
+	function formatDate(time){
+		if (!time) return '';
+		return new Date(parseInt(time) * 1000).toLocaleString();
+	}
+
+	/* Inbox Functions */
+	function getInboxCells(inbox){
+		var quote = "'"
+        return '<td>' + formatDate(inbox.timestamp) + '</td>' +
+				'<td>' + inbox.sender + '</td>' +
+                '<td>' + inbox.rawmessage + '</td>' +
+				'<td>' + '<button class="btn btn-default" type="button" id="replyMessage" onclick="replyMessage(' + quote + inbox.scvalue + quote + ',' + quote + inbox.sender + quote + ');"><span><i class="fa fa-key"></i> <span data-tkey="replyMessage" style="word-wrap: break-word; white-space: normal;">Reply</span></span></button>'  + '</td>'; //<button class="btn btn-default" type="button" id="forwardMessage" onclick="forwardMessage(' + quote + inbox.scvalue + quote + ',' + quote + inbox.sender + quote + ');"><span><i class="fa fa-key"></i> <span data-tkey="forwardMessage" style="word-wrap: break-word; white-space: normal;">Forward</span></span></button>' + '</td>';
+	}
+
+	function getInboxRowElement(inbox, jsonString){
+		var row = document.createElement('tr');
+		row.setAttribute('data-json', jsonString);
+		row.setAttribute('data-time', inbox.timestamp);
+		row.setAttribute('id', 'inboxRow' + inbox.scvalue);
+
+		row.innerHTML = getInboxCells(inbox);
+
+		return row;
+	}
+
+
+	function parseInbox(serializedInbox){
+		return {
+			timestamp: serializedInbox.TimeStamp,
+			sender: serializedInbox.Sender,
+			rawmessage: serializedInbox.RawMessage,
+			scvalue: serializedInbox.ScValue
+		};
+	}
+
+	function renderInbox(receivedEmails){
+		var $inboxRows = $('#inbox_table');
+
+		for (var i = 0; i < receivedEmails.length; i++){
+			var inbox = parseInbox(receivedEmails[i]);
+			var inboxJson = JSON.stringify(inbox);
+			var existingRow = document.getElementById('inboxRow' + inbox.scvalue);
+
+			if (existingRow && existingRow.getAttribute('data-json') !== inboxJson){
+				$(existingRow).replaceWith(getInboxRowElement(inbox, inboxJson));
+			}
+			else if (!existingRow){
+
+				var inboxElement = getInboxRowElement(inbox, inboxJson);
+
+				var inserted = false;
+				var rows = $inboxRows.children().get();
+				
+				for (var f = 0; f < rows.length; f++) {
+					//var pTime = parseInt(rows[f].getAttribute('data-time'));
+					var pTXID = rows[f].getAttribute('data-time');
+					if (pTXID < inbox.timestamp){
+						inserted = true;
+						$(rows[f]).before(inboxElement);
+						break;
+					}
+				}
+				
+				if (!inserted)
+					$inboxRows.append(inboxElement);
+			}
+		}
+	}
+
+	/* Sent Messages Functions */
+	function getSentMessagesCells(sentmessages){
+		var quote = "'"
+        return '<td>' + formatDate(sentmessages.timestamp) + '</td>' +
+				'<td>' + sentmessages.recipient + '</td>' +
+				'<td>' + sentmessages.scvalue + '</td>';
+	}
+
+	function getSentMessagesRowElement(sentmessages, jsonString){
+		var row = document.createElement('tr');
+		row.setAttribute('data-json', jsonString);
+		row.setAttribute('data-time', sentmessages.timestamp);
+		row.setAttribute('id', 'sentmessagesRow' + sentmessages.scvalue);
+
+		row.innerHTML = getSentMessagesCells(sentmessages);
+
+		return row;
+	}
+
+
+	function parseSentMessages(serializedSentMessages){
+		return {
+			timestamp: serializedSentMessages.TimeStamp,
+			recipient: serializedSentMessages.Recipient,
+			scvalue: serializedSentMessages.ScValue
+		};
+	}
+
+	function renderSentMessages(sentMessages){
+		var $sentmessagesRows = $('#sentmessages_table');
+
+		for (var i = 0; i < sentMessages.length; i++){
+			var sentmessages = parseSentMessages(sentMessages[i]);
+			var sentmessagesJson = JSON.stringify(sentmessages);
+			var existingRow = document.getElementById('sentmessagesRow' + sentmessages.scvalue);
+
+			if (existingRow && existingRow.getAttribute('data-json') !== sentmessagesJson){
+				$(existingRow).replaceWith(getSentMessagesRowElement(sentmessages, sentmessagesJson));
+			}
+			else if (!existingRow){
+
+				var sentmessagesElement = getSentMessagesRowElement(sentmessages, sentmessagesJson);
+
+				var inserted = false;
+				var rows = $sentmessagesRows.children().get();
+				
+				for (var f = 0; f < rows.length; f++) {
+					//var pTime = parseInt(rows[f].getAttribute('data-time'));
+					var pTXID = rows[f].getAttribute('data-time');
+					if (pTXID < sentmessages.timestamp){
+						inserted = true;
+						$(rows[f]).before(sentmessagesElement);
+						break;
+					}
+				}
+				
+				if (!inserted)
+					$sentmessagesRows.append(sentmessagesElement);
+			}
+		}
+	}
+</script>

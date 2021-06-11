@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1">
+
+	<title>DERO Message</title>
+	<!-- favicon -->
+	<link rel="shortcut icon" type="image/x-icon" href="favicon.ico">
+
+	<meta name="Description" content="DERO Message.  DERO Message Service. Donate or receive DERO!">
+	<meta name="keywords" content="DERO, message, services, nelbert442, cryptocurrency, privacy, encryption">
+
+	<link href="lib/bootstrap.min.css" rel="stylesheet">
+	<link href="lib/font-awesome.min.css" rel="stylesheet">
+	<link href="themes/default.css" rel="stylesheet">
+
+	<script src="lib/jquery.min.js"></script>
+	<script src="config.js"></script>
+</head>
+
+<body>
+	<!-- Javascript -->
+	<script>
+		var xhrPageLoading;
+		var currentPage;
+		var lastStats;
+	
+		$.fn.update = function(txt){
+			var el = this[0];
+			if (el.textContent !== txt)
+				el.textContent = txt;
+			return this;
+		};
+	
+		function updateText(elementId, text){
+			var el = document.getElementById(elementId);
+			if(el.textContent)
+			{
+				if (el.textContent !== text){
+					el.textContent = text;
+				}
+			}
+			else
+			{
+				el.textContent = text
+			}
+			return el;
+		}
+
+		// Update Text classes
+		function updateTextClasses (className, text) {
+			var els = document.getElementsByClassName(className);
+			if (els) {
+				for (var i = 0; i < els.length; i++) {
+					var el = els[i];
+					if (el && el.textContent !== text)
+						el.textContent = text;
+				}
+			}
+		}
+	
+		function pulseLiveUpdate(){
+			var stats_update = document.getElementById('statsUpdated');
+			stats_update.style.transition = 'opacity 100ms ease-out';
+			stats_update.style.opacity = 1;
+			setTimeout(function(){
+				stats_update.style.transition = 'opacity 7000ms linear';
+				stats_update.style.opacity = 0;
+			}, 5000);
+		}
+
+		window.onhashchange = function(){
+        	routePage();
+    	};
+	
+		function fetchLiveStats() {
+			$.ajax({
+				url: api + '/stats',
+				dataType: 'json',
+				cache: 'false'
+			}).done(function(data){
+				pulseLiveUpdate();
+				lastStats = data;
+				currentPage.update();
+			});
+		}
+	
+		function routePage(loadedCallback) {
+	
+			if (currentPage) currentPage.destroy();
+			$('#page').html('');
+			$('#loading').show();
+	
+			if (xhrPageLoading)
+				xhrPageLoading.abort();
+	
+			$('.hot_link').parent().removeClass('active');
+			var $link = $('a.hot_link[href="' + (window.location.hash || '#') + '"]');
+	
+			$link.parent().addClass('active');
+			var page = $link.data('page');
+	
+			xhrPageLoading = $.ajax({
+				url: 'pages/' + page,
+				cache: false,
+				success: function (data) {
+					$('#loading').hide();
+					$('#page').show().html(data);
+					currentPage.update();
+					if (loadedCallback) loadedCallback();
+				}
+			});
+		}
+
+		function getTransactionUrl(id) {
+			return lastStats.transactionExplorer.replace('{id}', id);
+		}
+	
+		$(function(){
+			$.get(api + '/stats', function(data){
+				lastStats = data;
+				routePage(fetchLiveStats);
+				setInterval(function(){ 
+					fetchLiveStats();
+				}, 7500);
+			});
+
+			if (typeof discord !== 'undefined' && discord) {
+				$('#menu-content')
+					.append('<li><a target="_new" href="' + discord + '"><i class="fa fa-ticket"></i> <span data-tkey="discord">Discord</span></a></li>');
+			}
+		});
+		</script>
+
+	<div id="wrapper">
+		<!-- Navigation -->
+		<div class="nav-side-menu">
+			<div class="brand"><a href="/"><span id="coinSymbol"></span> <span data-tkey="miningPool">DERO Message</span></a></div>
+			<i class="fa fa-bars fa-2x toggle-btn" data-toggle="collapse" data-target="#menu-content"></i>
+			<div class="menu-list">
+				<ul id="menu-content" class="menu-content collapsed out">
+					<li><a class="hot_link" data-page="home.html" href="#">
+						<i class="fa fa-home"></i> <span data-tkey="dashboard">Dashboard</span>
+					</a></li>
+				</ul>
+			</div>
+
+		</div>
+
+		<!-- Top Bar -->
+		<div id="top-bar">
+			<div><span id="statsUpdated"><span data-tkey="statsUpdated">Stats Updated</span> &nbsp;</span></div>
+			<div id="langSelector"></div>
+		</div>
+
+		<!-- Page content -->
+		<div id="page-wrapper">
+			<div id="page"></div>
+			<p id="loading" class="text-center"><i class="fa fa-circle-o-notch fa-spin"></i></p>
+		</div>
+	</div>
+
+	<!-- Footer -->
+	<footer>
+		<div class="text-muted">
+			<span data-tkey="poweredBy">Powered by</span> <a target="_blank" href="https://github.com/Nelbert442/dero-smartcontracts/tree/main/DERO-Message"><i class="fa fa-github"></i> dM</a>
+			<span id="poolVersion"></span>
+			<span class="hidden-xs"><span data-tkey="openSource">open sourced under </span> <a href="https://github.com/Nelbert442/dero-smartcontracts/blob/main/LICENSE">BSD</a></span>
+		</div>
+	</footer>
+
+</body>
+
+</html>
