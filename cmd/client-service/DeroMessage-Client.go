@@ -478,7 +478,7 @@ func encryptAndSend(key []byte, plaintext string, varname string) error {
 	rpcArgs = append(rpcArgs, rpc.Argument{Name: "entrypoint", DataType: "S", Value: "InputStr"})
 	rpcArgs = append(rpcArgs, rpc.Argument{Name: "input", DataType: "S", Value: string(ciphertext)})
 	rpcArgs = append(rpcArgs, rpc.Argument{Name: "varname", DataType: "S", Value: varname})
-	scparams := rpc.SC_Invoke_Params{SC_ID: "5ef335370a0ca2520e8848f4d2487c74dd028c32ef859d4b915f2d53daac712f", SC_DERO_Deposit: uint64(1), SC_RPC: rpcArgs}
+	scparams := rpc.SC_Invoke_Params{SC_ID: "279488fed9a21c8267fcf0ccef0431416ca99478aeccebd6522e91adc66e9422", SC_DERO_Deposit: uint64(1), SC_RPC: rpcArgs}
 	err = walletRPCClient.CallFor(&scstr, "scinvoke", scparams)
 	if err != nil {
 		log.Printf("[encryptAndSend] sending SC tx err %s\n", err)
@@ -568,7 +568,7 @@ func checkUserKeyResults(userKey string) string {
 	var scstr *rpc.GetSC_Result
 	var strings []string
 	strings = append(strings, userKey)
-	getSC := rpc.GetSC_Params{SCID: "5ef335370a0ca2520e8848f4d2487c74dd028c32ef859d4b915f2d53daac712f", Code: false, KeysString: strings}
+	getSC := rpc.GetSC_Params{SCID: "279488fed9a21c8267fcf0ccef0431416ca99478aeccebd6522e91adc66e9422", Code: false, KeysString: strings}
 	err := derodRPCClient.CallFor(&scstr, "getsc", getSC)
 	if err != nil {
 		log.Printf("[checkUserKeyResults] getting SC tx err %s\n", err)
