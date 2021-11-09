@@ -102,14 +102,20 @@ Usage:
 Options:
   -h --help     Show this screen.
   --rpc-server-address=<127.0.0.1:40403>	connect to service (client) wallet
+  --daemon-rpc-address=<127.0.0.1:40402>	connect to daemon
   --api-port=<8224>	API (non-SSL) will be enabled at the defined port (or defaulted to 127.0.0.1:8224)
   --ssl-api-port=<8225>	if defined, API (SSL) will be enabled at the defined port. apifullchain.cer && apicert.key in the same dir is required
   --frontend-port=<8080>	if defined, frontend (non-SSL) will be enabled
-  --ssl-frontend-port=<8181>	if defined, frontend (SSL) will be enabled. fefullchain.cer && fecert.key in the same dir is required`
+  --ssl-frontend-port=<8181>	if defined, frontend (SSL) will be enabled. fefullchain.cer && fecert.key in the same dir is required
+  --scid=<8380df5486301df4766716675ec7e274128c440ef534960a41957cc0dd5d7fbd>		if defined, code will leverage custom SCID for store (this MUST be similar to this repo's .bas contract, else very similar methods or else you will get errs)`
 
 var api_nonssl_addr string
 var api_ssl_addr string
 var api_use_ssl bool
+
+var prevTH int64
+var writeWait time.Duration
+var thAddition int64
 
 const API_CERTFILE = "apifullchain.cer"
 const API_KEYFILE = "apicert.key"
@@ -129,6 +135,7 @@ var messageSend = rpc.Arguments{
 
 var walletRPCClient jsonrpc.RPCClient
 var derodRPCClient jsonrpc.RPCClient
+var scid string
 var serviceAddress string
 
 var Graviton_backend *GravitonStore = &GravitonStore{}
@@ -140,6 +147,10 @@ var API *ApiServer = &ApiServer{
 func main() {
 	var err error
 	var walletEndpoint string
+	var daemonEndpoint string
+
+	writeWait, _ = time.ParseDuration("5s")
+	thAddition = 1
 
 	var arguments map[string]interface{}
 
@@ -162,7 +173,22 @@ func main() {
 
 	// create wallet client
 	walletRPCClient = jsonrpc.NewClient("http://" + walletEndpoint + "/json_rpc")
-	derodRPCClient = jsonrpc.NewClient("http://127.0.0.1:40402/json_rpc")
+
+	// create daemon client
+	daemonEndpoint = "127.0.0.1:40402"
+	if arguments["--daemon-rpc-address"] != nil {
+		daemonEndpoint = arguments["--daemon-rpc-address"].(string)
+	}
+
+	log.Printf("[Main] Using daemon RPC endpoint %s\n", daemonEndpoint)
+
+	derodRPCClient = jsonrpc.NewClient("http://" + daemonEndpoint + "/json_rpc")
+
+	// Set SCID - default to repo's default. No matter the SCID.. information is not leaked since the client handles key traversal & encrypt/decrypt messages.
+	scid = "8380df5486301df4766716675ec7e274128c440ef534960a41957cc0dd5d7fbd"
+	if arguments["--scid"] != nil {
+		scid = arguments["--scid"].(string)
+	}
 
 	// TODO: Cleanup implementation of this a bit.. need cleaner and more defined param vs what is setup by default (api by default, perhaps local web by default as well in this implementation)
 	api_use_ssl = false
@@ -473,16 +499,46 @@ func encryptAndSend(key []byte, plaintext string, varname string) error {
 	// Future TODO: If compression is required/used, define it here
 
 	/* Call SC - this is to input data into a SC that just takes a simple string and stores it to a simple var [single TX store compressed & encoded txt to be pulled from later]*/
-	var scstr string
+	//var scstr string
+	var scstr rpc.Transfer_Result
 	var rpcArgs []rpc.Argument
 	rpcArgs = append(rpcArgs, rpc.Argument{Name: "entrypoint", DataType: "S", Value: "InputStr"})
 	rpcArgs = append(rpcArgs, rpc.Argument{Name: "input", DataType: "S", Value: string(ciphertext)})
 	rpcArgs = append(rpcArgs, rpc.Argument{Name: "varname", DataType: "S", Value: varname})
-	scparams := rpc.SC_Invoke_Params{SC_ID: "279488fed9a21c8267fcf0ccef0431416ca99478aeccebd6522e91adc66e9422", SC_DERO_Deposit: uint64(1), SC_RPC: rpcArgs}
+	scparams := rpc.SC_Invoke_Params{SC_ID: scid, SC_DERO_Deposit: uint64(1), SC_RPC: rpcArgs}
+	if prevTH != 0 {
+		for {
+			var info rpc.GetInfo_Result
+			err = derodRPCClient.CallFor(&info, "get_info")
+			if err != nil {
+				return err
+			}
+
+			targetTH := prevTH + thAddition
+
+			if targetTH <= info.TopoHeight {
+				prevTH = info.TopoHeight
+				break
+			} else {
+				log.Printf("[sendTX] Waiting until topoheights line up to send next TX [last: %v / curr: %v]", info.TopoHeight, targetTH)
+				time.Sleep(writeWait)
+			}
+		}
+	} else {
+		var info rpc.GetInfo_Result
+		err = derodRPCClient.CallFor(&info, "get_info")
+		if err != nil {
+			return err
+		}
+
+		prevTH = info.TopoHeight
+	}
 	err = walletRPCClient.CallFor(&scstr, "scinvoke", scparams)
 	if err != nil {
 		log.Printf("[encryptAndSend] sending SC tx err %s\n", err)
 		return err
+	} else {
+		log.Printf("[encryptAndSent] Sent SC tx successfully")
 	}
 
 	return nil
@@ -568,12 +624,14 @@ func checkUserKeyResults(userKey string) string {
 	var scstr *rpc.GetSC_Result
 	var strings []string
 	strings = append(strings, userKey)
-	getSC := rpc.GetSC_Params{SCID: "279488fed9a21c8267fcf0ccef0431416ca99478aeccebd6522e91adc66e9422", Code: false, KeysString: strings}
+	getSC := rpc.GetSC_Params{SCID: scid, Code: false, KeysString: strings}
 	err := derodRPCClient.CallFor(&scstr, "getsc", getSC)
 	if err != nil {
 		log.Printf("[checkUserKeyResults] getting SC tx err %s\n", err)
 		return ""
 	}
+
+	log.Printf("[checkUserKeyResults] Returned string - %v", scstr)
 
 	if len(scstr.ValuesString) > 1 {
 		log.Printf("[checkUserKeyResults] more than 1 value returned for '%v'. Will be returning slot 0, here are all of them: %v\n", userKey, scstr.ValuesString)
@@ -633,8 +691,38 @@ func decrypt(key []byte, cryptoText string) string {
 
 func sendTx(transfers []rpc.Transfer, scvalue string, key []byte) string {
 	// sender of ping now becomes destination
-	var str string
+	//var str string
+	var str rpc.Transfer_Result
 	tparams := rpc.Transfer_Params{Transfers: transfers}
+
+	if prevTH != 0 {
+		for {
+			var info rpc.GetInfo_Result
+			err := derodRPCClient.CallFor(&info, "get_info")
+			if err != nil {
+				return fmt.Sprintf("ERR: %v", err)
+			}
+
+			targetTH := prevTH + thAddition
+
+			if targetTH <= info.TopoHeight {
+				prevTH = info.TopoHeight
+				break
+			} else {
+				log.Printf("[sendTX] Waiting until topoheights line up to send next TX [last: %v / curr: %v]", info.TopoHeight, targetTH)
+				time.Sleep(writeWait)
+			}
+		}
+	} else {
+		var info rpc.GetInfo_Result
+		err := derodRPCClient.CallFor(&info, "get_info")
+		if err != nil {
+			return fmt.Sprintf("ERR: %v", err)
+		}
+
+		prevTH = info.TopoHeight
+	}
+
 	err := walletRPCClient.CallFor(&str, "Transfer", tparams)
 	if err != nil {
 		log.Printf("[sendTx] err: %v", err)
