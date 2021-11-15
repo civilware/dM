@@ -268,12 +268,15 @@ func processSendingMessages(varname string, plaintext string, destinationAddress
 	// Version 2 TODO: messagetags are leveraged for replying/forwarding messages
 
 	// Check if the variable already exists, if it does exit out (FOR NOW), possibly add --overwrite option or something for data recycling at a later time
+	log.Printf("[processSendingMessages] Checking '%v' to see if it is already used in SC.", varname)
 	varTap := checkUserKeyResults(varname)
 	resCheck := strings.Split(varTap, ":")
 
 	if resCheck[0] != "NOT AVAILABLE err" {
 		log.Printf("[processSendingMessages] ERR: There is already encrypted context stored at defined variable '%v'. Please use a different variable name", varname)
 		return fmt.Sprintf("ERR: There is already encrypted context stored at defined variable '%v'. Please try re-sending your message.", varname)
+	} else {
+		log.Printf("[processSendingMessages] Var '%v' is not already defined in SC, proceeding.", varname)
 	}
 
 	if destinationAddresses == "" {
@@ -538,7 +541,7 @@ func encryptAndSend(key []byte, plaintext string, varname string) error {
 		log.Printf("[encryptAndSend] sending SC tx err %s\n", err)
 		return err
 	} else {
-		log.Printf("[encryptAndSent] Sent SC tx successfully")
+		log.Printf("[encryptAndSent] Sent SC tx successfully - txid: %v", scstr.TXID)
 	}
 
 	return nil
@@ -727,6 +730,8 @@ func sendTx(transfers []rpc.Transfer, scvalue string, key []byte) string {
 	if err != nil {
 		log.Printf("[sendTx] err: %v", err)
 		return fmt.Sprintf("ERR: %v", err)
+	} else {
+		log.Printf("[sendTx] Tx sent successfully - txid: %v", str.TXID)
 	}
 
 	for _, v := range transfers {
