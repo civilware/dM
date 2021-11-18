@@ -107,7 +107,7 @@ Options:
   --ssl-api-port=<8225>	if defined, API (SSL) will be enabled at the defined port. apifullchain.cer && apicert.key in the same dir is required
   --frontend-port=<8080>	if defined, frontend (non-SSL) will be enabled
   --ssl-frontend-port=<8181>	if defined, frontend (SSL) will be enabled. fefullchain.cer && fecert.key in the same dir is required
-  --scid=<8380df5486301df4766716675ec7e274128c440ef534960a41957cc0dd5d7fbd>		if defined, code will leverage custom SCID for store (this MUST be similar to this repo's .bas contract, else very similar methods or else you will get errs)`
+  --scid=<9f02f959adb37ff20c20c8fb221aebe8d4583f74106df6a391765341875084e2>		if defined, code will leverage custom SCID for store (this MUST be similar to this repo's .bas contract, else very similar methods or else you will get errs)`
 
 var api_nonssl_addr string
 var api_ssl_addr string
@@ -185,7 +185,7 @@ func main() {
 	derodRPCClient = jsonrpc.NewClient("http://" + daemonEndpoint + "/json_rpc")
 
 	// Set SCID - default to repo's default. No matter the SCID.. information is not leaked since the client handles key traversal & encrypt/decrypt messages.
-	scid = "8380df5486301df4766716675ec7e274128c440ef534960a41957cc0dd5d7fbd"
+	scid = "9f02f959adb37ff20c20c8fb221aebe8d4583f74106df6a391765341875084e2"
 	if arguments["--scid"] != nil {
 		scid = arguments["--scid"].(string)
 	}
@@ -504,11 +504,11 @@ func encryptAndSend(key []byte, plaintext string, varname string) error {
 	/* Call SC - this is to input data into a SC that just takes a simple string and stores it to a simple var [single TX store compressed & encoded txt to be pulled from later]*/
 	//var scstr string
 	var scstr rpc.Transfer_Result
-	var rpcArgs []rpc.Argument
+	var rpcArgs = rpc.Arguments{}
 	rpcArgs = append(rpcArgs, rpc.Argument{Name: "entrypoint", DataType: "S", Value: "InputStr"})
 	rpcArgs = append(rpcArgs, rpc.Argument{Name: "input", DataType: "S", Value: string(ciphertext)})
 	rpcArgs = append(rpcArgs, rpc.Argument{Name: "varname", DataType: "S", Value: varname})
-	scparams := rpc.SC_Invoke_Params{SC_ID: scid, SC_DERO_Deposit: uint64(1), SC_RPC: rpcArgs}
+	scparams := rpc.SC_Invoke_Params{SC_ID: scid, Ringsize: 2, SC_RPC: rpcArgs}
 	if prevTH != 0 {
 		for {
 			var info rpc.GetInfo_Result
@@ -570,7 +570,13 @@ func receiveAndDecrypt(key []byte, scVarName string, txid string, sender string,
 
 	// Decrypt data
 	//decryptedText := decrypt(key, results) // AES-256 Decryption .. replaced w/ walletapi.DecryptWithKey ("golang.org/x/crypto/chacha20poly1305")
-	resultByte, err := hex.DecodeString(results)
+	// We have to decode string twice, because sc store encodes it again after original
+	firstResultByte, err := hex.DecodeString(results)
+	if err != nil {
+		log.Printf("[receiveAndDecrypt] Err decoding stored SC hex encoded string first time around..")
+	}
+	firstResultToString := string(firstResultByte)
+	resultByte, err := hex.DecodeString(firstResultToString)
 	if err != nil {
 		log.Printf("[receiveAndDecrypt] Err decoding stored SC hex encoded string.")
 		return ""
