@@ -107,7 +107,7 @@ Options:
   --ssl-api-port=<8225>	if defined, API (SSL) will be enabled at the defined port. apifullchain.cer && apicert.key in the same dir is required
   --frontend-port=<8080>	if defined, frontend (non-SSL) will be enabled
   --ssl-frontend-port=<8181>	if defined, frontend (SSL) will be enabled. fefullchain.cer && fecert.key in the same dir is required
-  --scid=<9f02f959adb37ff20c20c8fb221aebe8d4583f74106df6a391765341875084e2>		if defined, code will leverage custom SCID for store (this MUST be similar to this repo's .bas contract, else very similar methods or else you will get errs)`
+  --scid=<32793ea5dc8ccbfd9c9bdf47135ad75556c8a9e0fd7beeb4eb8e737a60540f8a>		if defined, code will leverage custom SCID for store (this MUST be similar to this repo's .bas contract, else very similar methods or else you will get errs)`
 
 var api_nonssl_addr string
 var api_ssl_addr string
@@ -185,7 +185,7 @@ func main() {
 	derodRPCClient = jsonrpc.NewClient("http://" + daemonEndpoint + "/json_rpc")
 
 	// Set SCID - default to repo's default. No matter the SCID.. information is not leaked since the client handles key traversal & encrypt/decrypt messages.
-	scid = "9f02f959adb37ff20c20c8fb221aebe8d4583f74106df6a391765341875084e2"
+	scid = "32793ea5dc8ccbfd9c9bdf47135ad75556c8a9e0fd7beeb4eb8e737a60540f8a"
 	if arguments["--scid"] != nil {
 		scid = arguments["--scid"].(string)
 	}

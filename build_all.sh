@@ -8,7 +8,7 @@ ABSDIR=$(dirname $ABSPATH)
 
 unset GOPATH
 
-version="1.0.15"
+version="1.0.28"
 
 
 cd $CURDIR
