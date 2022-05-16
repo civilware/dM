@@ -5,9 +5,9 @@ dM is a 100% on-chain solution to encrypted messaging. It leverages DERO's nativ
 dM is under heavy development. There are certain capabilities that are not yet implemented such as gas/tx fee estimation etc. I strongly suggest trying this out on a DERO testnet (public or local) to get a feel for the functionality as well as the fees to expect. Operate at your own risk. I am not responsible for large tx fees as the dApp WILL send these txs without prompting you first regarding the fees associated with your messages to be sent (at this time).
 
 ### Build
-You can download pre-compiled binaries and site content [here](https://github.com/Nelbert442/dM/releases/tag/v1.1.0) , or get source: 
+You can download pre-compiled binaries and site content [future](https://github.com/civilware/dM/releases) , or get source: 
 ```
-go get github.com/Nelbert442/dM/...
+go get github.com/civilware/dM/...
 ```
 
 ### Client Service
