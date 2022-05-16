@@ -101,13 +101,13 @@ Usage:
 
 Options:
   -h --help     Show this screen.
-  --rpc-server-address=<127.0.0.1:40403>	connect to service (client) wallet
-  --daemon-rpc-address=<127.0.0.1:40402>	connect to daemon
+  --rpc-server-address=<127.0.0.1:10103>	connect to service (client) wallet
+  --daemon-rpc-address=<127.0.0.1:10102>	connect to daemon
   --api-port=<8224>	API (non-SSL) will be enabled at the defined port (or defaulted to 127.0.0.1:8224)
   --ssl-api-port=<8225>	if defined, API (SSL) will be enabled at the defined port. apifullchain.cer && apicert.key in the same dir is required
   --frontend-port=<8080>	if defined, frontend (non-SSL) will be enabled
   --ssl-frontend-port=<8181>	if defined, frontend (SSL) will be enabled. fefullchain.cer && fecert.key in the same dir is required
-  --scid=<32793ea5dc8ccbfd9c9bdf47135ad75556c8a9e0fd7beeb4eb8e737a60540f8a>		if defined, code will leverage custom SCID for store (this MUST be similar to this repo's .bas contract, else very similar methods or else you will get errs)`
+  --scid=<805ade9294d01a8c9892c73dc7ddba012eaa0d917348f9b317b706131c82a2d5>		if defined, code will leverage custom SCID for store (this MUST be similar to this repo's .bas contract, else very similar methods or else you will get errs)`
 
 var api_nonssl_addr string
 var api_ssl_addr string
@@ -164,7 +164,7 @@ func main() {
 	log.Printf("[Main] DERO Message Service (client) :  This is under heavy development, use it for testing/evaluations purpose only\n")
 
 	// Set variables from arguments
-	walletEndpoint = "127.0.0.1:40403"
+	walletEndpoint = "127.0.0.1:10103"
 	if arguments["--rpc-server-address"] != nil {
 		walletEndpoint = arguments["--rpc-server-address"].(string)
 	}
@@ -175,7 +175,7 @@ func main() {
 	walletRPCClient = jsonrpc.NewClient("http://" + walletEndpoint + "/json_rpc")
 
 	// create daemon client
-	daemonEndpoint = "127.0.0.1:40402"
+	daemonEndpoint = "127.0.0.1:10102"
 	if arguments["--daemon-rpc-address"] != nil {
 		daemonEndpoint = arguments["--daemon-rpc-address"].(string)
 	}
@@ -185,7 +185,7 @@ func main() {
 	derodRPCClient = jsonrpc.NewClient("http://" + daemonEndpoint + "/json_rpc")
 
 	// Set SCID - default to repo's default. No matter the SCID.. information is not leaked since the client handles key traversal & encrypt/decrypt messages.
-	scid = "32793ea5dc8ccbfd9c9bdf47135ad75556c8a9e0fd7beeb4eb8e737a60540f8a"
+	scid = "805ade9294d01a8c9892c73dc7ddba012eaa0d917348f9b317b706131c82a2d5"
 	if arguments["--scid"] != nil {
 		scid = arguments["--scid"].(string)
 	}
@@ -471,7 +471,7 @@ func encryptAndSend(key []byte, plaintext string, varname string) error {
 	*/
 
 	/*
-		Using chacha20poly1305 NewX - https://golang.org/pkg/vendor/golang.org/x/crypto/chacha20poly1305/
+		Using chacha20poly1305 NewX - https://pkg.go.dev/golang.org/x/crypto/chacha20poly1305#NewX
 
 		XChaCha20-Poly1305 is a ChaCha20-Poly1305 variant that takes a longer nonce, suitable to be generated randomly without risk of collisions.
 		It should be preferred when nonce uniqueness cannot be trivially ensured, or whenever nonces are randomly generated.
@@ -508,6 +508,8 @@ func encryptAndSend(key []byte, plaintext string, varname string) error {
 	rpcArgs = append(rpcArgs, rpc.Argument{Name: "entrypoint", DataType: "S", Value: "InputStr"})
 	rpcArgs = append(rpcArgs, rpc.Argument{Name: "input", DataType: "S", Value: string(ciphertext)})
 	rpcArgs = append(rpcArgs, rpc.Argument{Name: "varname", DataType: "S", Value: varname})
+	// TODO: Define ringsize to be 4 or more/configurable. This allows deniability and disallows possibility of extracting the signer() [your address sending the tx]. Value can be higher, however to keep tx fees lower keep at 4.
+	// TODO: param to supply addtl and do gas checks etc. and show how much itll cost to send etc.
 	scparams := rpc.SC_Invoke_Params{SC_ID: scid, Ringsize: 2, SC_RPC: rpcArgs}
 	if prevTH != 0 {
 		for {
