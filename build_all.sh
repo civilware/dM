@@ -12,7 +12,7 @@ version="1.0.28"
 
 
 cd $CURDIR
-bash $ABSDIR/build_package.sh "github.com/Nelbert442/dM/cmd/client-service"
+bash $ABSDIR/build_package.sh "github.com/civilware/dM/cmd/client-service"
 
 #copy site contents into folders
 cd "cmd/client-service"
